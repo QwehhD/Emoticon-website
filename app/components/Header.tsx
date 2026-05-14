@@ -1,4 +1,4 @@
-import { Activity, Search, Bell } from 'lucide-react';
+import { Smile, Search, Bell } from 'lucide-react';
 
 export function Header() {
   return (
@@ -6,7 +6,7 @@ export function Header() {
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <div className="p-2 bg-green-600 rounded-lg">
-            <Activity className="text-white w-5 h-5" />
+            <Smile className="text-white w-5 h-5" />
           </div>
           Emotion Monitoring
         </h1>

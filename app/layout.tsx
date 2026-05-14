@@ -13,8 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Emoticon",
-  description: "Emoticon Monitoring Dashboard",
+  title: "Emotion Monitoring",
+  description: "Sistem pemantauan kesejahteraan user via RFID & Real-time MQTT",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
