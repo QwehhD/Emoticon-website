@@ -3,6 +3,7 @@
 import { Header } from './Header';
 import { StatsCards } from './StatsCards';
 import { ActivityTable } from './ActivityTable';
+import { EmotionDashboard } from './EmotionDashboard';
 import { useEmotionLogs } from '@/hooks/useEmotionLogs';
 
 export function Dashboard() {
@@ -14,6 +15,9 @@ export function Dashboard() {
         <Header />
         <StatsCards />
         <ActivityTable logs={logs} />
+        <div className="mt-8">
+          <EmotionDashboard />
+        </div>
       </div>
     </div>
   );
