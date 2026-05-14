@@ -3,10 +3,10 @@
 import { Header } from './Header';
 import { StatsCards } from './StatsCards';
 import { ActivityTable } from './ActivityTable';
-import { useEmotionLogs } from '@/app/hooks/useEmotionLogs';
+import { useEmotionLogs } from '@/hooks/useEmotionLogs';
 
 export function Dashboard() {
-  const logs = useEmotionLogs();
+  const { logs } = useEmotionLogs();
 
   return (
     <div className="min-h-screen bg-white p-4 md:p-8 font-sans text-slate-900">

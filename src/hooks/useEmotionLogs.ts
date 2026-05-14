@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import mqtt, { MqttClient } from 'mqtt';
+import mqtt, { MqttClient, IClientOptions } from 'mqtt';
 import { supabase } from '@/lib/supabase';
 import { EmotionLog } from '@/types/emotion';
 
 const MQTT_BROKER_URL = process.env.NEXT_PUBLIC_MQTT_BROKER_URL || 'wss://broker.hivemq.com:8884/mqtt';
 const MQTT_TOPIC = 'v1/emotion/logs';
-const MQTT_USERNAME = process.env.NEXT_PUBLIC_MQTT_USERNAME;
-const MQTT_PASSWORD = process.env.NEXT_PUBLIC_MQTT_PASSWORD;
+const MQTT_USERNAME = process.env.NEXT_PUBLIC_MQTT_USERNAME || '';
+const MQTT_PASSWORD = process.env.NEXT_PUBLIC_MQTT_PASSWORD || '';
 
 interface MQTTMessage {
   card_uid: string;
@@ -86,26 +86,37 @@ export function useEmotionLogs() {
         return;
       }
 
-      mqttClient = mqtt.connect(MQTT_BROKER_URL, {
-        username: MQTT_USERNAME,
-        password: MQTT_PASSWORD,
+      const mqttOptions: IClientOptions = {
         clientId: `emoticon-client-${Date.now()}`,
         clean: true,
         reconnectPeriod: 5000,
         connectTimeout: 10000,
-      });
+        protocol: 'wss',
+        rejectUnauthorized: false,
+      };
+
+      if (MQTT_USERNAME && MQTT_PASSWORD) {
+        mqttOptions.username = MQTT_USERNAME;
+        mqttOptions.password = MQTT_PASSWORD;
+      } else {
+        console.warn('MQTT credentials not provided - attempting anonymous connection');
+      }
+
+      console.log('Connecting to MQTT broker:', MQTT_BROKER_URL);
+
+      mqttClient = mqtt.connect(MQTT_BROKER_URL, mqttOptions);
 
       mqttClient.on('connect', () => {
-        console.log('Connected to MQTT broker');
+        console.log('✓ Connected to MQTT broker');
         setIsConnected(true);
         setError(null);
 
         mqttClient?.subscribe(MQTT_TOPIC, (err) => {
           if (err) {
-            console.error('Failed to subscribe to topic:', err);
-            setError(`Failed to subscribe to ${MQTT_TOPIC}`);
+            console.error('✗ Failed to subscribe to topic:', err);
+            setError(`Failed to subscribe to ${MQTT_TOPIC}: ${err.message}`);
           } else {
-            console.log(`Successfully subscribed to ${MQTT_TOPIC}`);
+            console.log(`✓ Successfully subscribed to ${MQTT_TOPIC}`);
           }
         });
       });
@@ -114,6 +125,7 @@ export function useEmotionLogs() {
         if (topic === MQTT_TOPIC) {
           try {
             const payload = JSON.parse(message.toString());
+            console.log('📨 Received MQTT message:', payload);
 
             if (isValidMQTTMessage(payload)) {
               const newLog: EmotionLog = {
@@ -124,29 +136,30 @@ export function useEmotionLogs() {
                 timestamp: payload.timestamp || new Date().toISOString(),
               };
 
+              console.log('✓ Adding new log entry:', newLog);
               setLogs((prevLogs) => [newLog, ...prevLogs].slice(0, 50));
             } else {
-              console.warn('Invalid MQTT message format:', payload);
+              console.warn('⚠ Invalid MQTT message format:', payload);
             }
           } catch (parseErr) {
-            console.error('Error parsing MQTT message:', parseErr);
+            console.error('✗ Error parsing MQTT message:', parseErr);
           }
         }
       });
 
       mqttClient.on('error', (err) => {
-        console.error('MQTT connection error:', err);
+        console.error('✗ MQTT connection error:', err);
         setIsConnected(false);
-        setError(`MQTT connection error: ${err.message}`);
+        setError(`Connection failed: ${err.message}`);
       });
 
       mqttClient.on('disconnect', () => {
-        console.log('Disconnected from MQTT broker');
+        console.log('⊘ Disconnected from MQTT broker');
         setIsConnected(false);
       });
 
       mqttClient.on('offline', () => {
-        console.log('MQTT client went offline');
+        console.log('⊘ MQTT client went offline');
         setIsConnected(false);
       });
     };
