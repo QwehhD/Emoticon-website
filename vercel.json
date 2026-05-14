@@ -1,0 +1,12 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "env": {
+    "NEXT_PUBLIC_MQTT_BROKER_URL": "@mqtt_broker_url",
+    "NEXT_PUBLIC_MQTT_USERNAME": "@mqtt_username",
+    "NEXT_PUBLIC_MQTT_PASSWORD": "@mqtt_password",
+    "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key"
+  }
+}
