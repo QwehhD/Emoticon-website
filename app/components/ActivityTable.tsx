@@ -1,5 +1,5 @@
 import { Clock, MoreVertical } from 'lucide-react';
-import { EmotionLog, EMOTION_CONFIG } from '@/app/types/emotion';
+import { EmotionLog, EMOTION_CONFIG } from '@/types/emotion';
 
 interface ActivityTableProps {
   logs: EmotionLog[];
