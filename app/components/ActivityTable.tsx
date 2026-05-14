@@ -1,6 +1,5 @@
 import { Clock, MoreVertical } from 'lucide-react';
-import { EmotionLog } from '@/app/types/emotion';
-import { emotionConfig } from '@/app/config/emotionConfig';
+import { EmotionLog, EMOTION_CONFIG } from '@/app/types/emotion';
 
 interface ActivityTableProps {
   logs: EmotionLog[];
@@ -44,16 +43,16 @@ export function ActivityTable({ logs }: ActivityTableProps) {
                 </td>
                 <td className="px-6 py-4">
                   <span className="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-1 rounded border border-slate-200">
-                    {log.cardUid}
+                    {log.card_uid}
                   </span>
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex justify-center">
                     <div
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${emotionConfig[log.emotion].bgColor} ${emotionConfig[log.emotion].textColor}`}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${EMOTION_CONFIG[log.emotion].bgColor} ${EMOTION_CONFIG[log.emotion].textColor}`}
                     >
-                      <span className="text-lg">{emotionConfig[log.emotion].emoji}</span>
-                      {emotionConfig[log.emotion].label}
+                      <span className="text-lg">{EMOTION_CONFIG[log.emotion].emoji}</span>
+                      {EMOTION_CONFIG[log.emotion].label}
                     </div>
                   </div>
                 </td>

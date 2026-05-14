@@ -1,18 +1,23 @@
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import mqtt, { MqttClient } from 'mqtt';
+import { supabase } from '@/lib/supabase';
 import { EmotionLog } from '@/types/emotion';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const mqttBrokerUrl = process.env.NEXT_PUBLIC_MQTT_BROKER_URL || 'wss://broker.hivemq.cloud:8884/mqtt';
-const mqttUsername = process.env.NEXT_PUBLIC_MQTT_USERNAME || '';
-const mqttPassword = process.env.NEXT_PUBLIC_MQTT_PASSWORD || '';
+const MQTT_BROKER_URL = process.env.NEXT_PUBLIC_MQTT_BROKER_URL || 'wss://broker.hivemq.com:8884/mqtt';
+const MQTT_TOPIC = 'v1/emotion/logs';
+const MQTT_USERNAME = process.env.NEXT_PUBLIC_MQTT_USERNAME;
+const MQTT_PASSWORD = process.env.NEXT_PUBLIC_MQTT_PASSWORD;
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+interface MQTTMessage {
+  card_uid: string;
+  emotion: string;
+  name: string;
+  timestamp?: string;
+}
 
 export function useEmotionLogs() {
   const [logs, setLogs] = useState<EmotionLog[]>([]);
+  const [isConnected, setIsConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,17 +30,17 @@ export function useEmotionLogs() {
         setError(null);
 
         const { data, error: supabaseError } = await supabase
-          .from('emotion_logs')
+          .from('view_emotion_logs')
           .select('*')
-          .order('timestamp', { ascending: false })
-          .limit(20);
+          .order('timestamp', { ascending: false });
 
         if (supabaseError) {
           console.warn('Supabase fetch warning:', supabaseError.message);
+          setError(`Failed to fetch initial data: ${supabaseError.message}`);
         }
 
-        if (data) {
-          const validatedLogs = data.filter((log) => isValidEmotionLog(log)) as EmotionLog[];
+        if (data && Array.isArray(data)) {
+          const validatedLogs = data.filter(isValidEmotionLog) as EmotionLog[];
           setLogs(validatedLogs);
         }
 
@@ -55,23 +60,35 @@ export function useEmotionLogs() {
       const obj = log as Record<string, unknown>;
       return (
         typeof obj.name === 'string' &&
-        typeof obj.cardUid === 'string' &&
+        typeof obj.card_uid === 'string' &&
         typeof obj.emotion === 'string' &&
         ['senang', 'sedih', 'marah'].includes(obj.emotion) &&
-        typeof obj.timestamp === 'string' &&
-        (!obj.id || typeof obj.id === 'string')
+        typeof obj.timestamp === 'string'
+      );
+    };
+
+    const isValidMQTTMessage = (payload: unknown): payload is MQTTMessage => {
+      if (typeof payload !== 'object' || payload === null) return false;
+
+      const obj = payload as Record<string, unknown>;
+      return (
+        typeof obj.card_uid === 'string' &&
+        typeof obj.emotion === 'string' &&
+        typeof obj.name === 'string' &&
+        ['senang', 'sedih', 'marah'].includes(obj.emotion)
       );
     };
 
     const connectToMQTT = () => {
-      if (!mqttBrokerUrl) {
+      if (!MQTT_BROKER_URL) {
         console.warn('MQTT broker URL not configured');
+        setError('MQTT broker URL not configured');
         return;
       }
 
-      mqttClient = mqtt.connect(mqttBrokerUrl, {
-        username: mqttUsername || undefined,
-        password: mqttPassword || undefined,
+      mqttClient = mqtt.connect(MQTT_BROKER_URL, {
+        username: MQTT_USERNAME,
+        password: MQTT_PASSWORD,
         clientId: `emoticon-client-${Date.now()}`,
         clean: true,
         reconnectPeriod: 5000,
@@ -80,31 +97,36 @@ export function useEmotionLogs() {
 
       mqttClient.on('connect', () => {
         console.log('Connected to MQTT broker');
-        mqttClient?.subscribe('v1/emotion/logs', (err) => {
+        setIsConnected(true);
+        setError(null);
+
+        mqttClient?.subscribe(MQTT_TOPIC, (err) => {
           if (err) {
             console.error('Failed to subscribe to topic:', err);
-            setError('Failed to subscribe to MQTT topic');
+            setError(`Failed to subscribe to ${MQTT_TOPIC}`);
+          } else {
+            console.log(`Successfully subscribed to ${MQTT_TOPIC}`);
           }
         });
       });
 
       mqttClient.on('message', (topic, message) => {
-        if (topic === 'v1/emotion/logs') {
+        if (topic === MQTT_TOPIC) {
           try {
             const payload = JSON.parse(message.toString());
 
-            if (isValidEmotionLog(payload)) {
+            if (isValidMQTTMessage(payload)) {
               const newLog: EmotionLog = {
-                id: payload.id,
+                id: `${payload.card_uid}-${Date.now()}`,
                 name: payload.name,
-                cardUid: payload.cardUid,
-                emotion: payload.emotion,
-                timestamp: payload.timestamp,
+                card_uid: payload.card_uid,
+                emotion: payload.emotion as 'senang' | 'sedih' | 'marah',
+                timestamp: payload.timestamp || new Date().toISOString(),
               };
 
-              setLogs((prevLogs) => [newLog, ...prevLogs].slice(0, 20));
+              setLogs((prevLogs) => [newLog, ...prevLogs].slice(0, 50));
             } else {
-              console.warn('Invalid emotion log format:', payload);
+              console.warn('Invalid MQTT message format:', payload);
             }
           } catch (parseErr) {
             console.error('Error parsing MQTT message:', parseErr);
@@ -113,20 +135,27 @@ export function useEmotionLogs() {
       });
 
       mqttClient.on('error', (err) => {
-        console.error('MQTT error:', err);
-        setError('Failed to connect to MQTT broker');
+        console.error('MQTT connection error:', err);
+        setIsConnected(false);
+        setError(`MQTT connection error: ${err.message}`);
       });
 
       mqttClient.on('disconnect', () => {
         console.log('Disconnected from MQTT broker');
+        setIsConnected(false);
+      });
+
+      mqttClient.on('offline', () => {
+        console.log('MQTT client went offline');
+        setIsConnected(false);
       });
     };
 
     initializeData();
 
     return () => {
-      if (mqttClient) {
-        mqttClient.unsubscribe('v1/emotion/logs');
+      if (mqttClient && mqttClient.connected) {
+        mqttClient.unsubscribe(MQTT_TOPIC);
         mqttClient.end(true, () => {
           console.log('MQTT connection closed');
         });
@@ -134,5 +163,11 @@ export function useEmotionLogs() {
     };
   }, []);
 
-  return { logs, loading, error };
+  return {
+    logs,
+    isConnected,
+    loading,
+    error,
+  };
 }
+
