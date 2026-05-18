@@ -182,8 +182,14 @@ async function handleMessage(topic: string, message: Buffer): Promise<void> {
       console.log(`  Emotion: ${emotion}`);
       console.log(`  Timestamp: ${timestamp}`);
       
-      // ✅ SAVE TO DATABASE
+      // ✅ LOOKUP USER NAME AND SAVE TO DATABASE
       try {
+        // Get user name from allowed_users
+        const userData = await getUserByUID(card_uid);
+        const userName = userData?.nama || 'Unknown User';
+        
+        console.log(`  User: ${userName}`);
+        
         const { data, error } = await supabase
           .from('emotion_logs')
           .insert([
@@ -191,6 +197,7 @@ async function handleMessage(topic: string, message: Buffer): Promise<void> {
               card_uid: card_uid,
               emotion: emotion,
               timestamp: timestamp,
+              user_name: userName,
             },
           ])
           .select();

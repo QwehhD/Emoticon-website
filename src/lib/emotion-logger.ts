@@ -5,6 +5,7 @@ export interface EmotionLog {
   card_uid: string;
   emotion: string;
   timestamp: number;
+  user_name?: string;
   created_at?: string;
 }
 

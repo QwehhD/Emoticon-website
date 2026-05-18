@@ -9,6 +9,7 @@ interface ApiEmotionLog {
   id: string;
   card_uid: string;
   emotion: string;
+  user_name?: string;
   created_at: string;
 }
 
@@ -32,7 +33,7 @@ export function useEmotionLogs() {
         if (data.data && Array.isArray(data.data)) {
           const transformedLogs = data.data.map((log: ApiEmotionLog) => ({
             id: log.id,
-            name: 'User', // You can enhance this by joining with user data
+            name: log.user_name || 'Unknown User',
             card_uid: log.card_uid,
             emotion: log.emotion as 'senang' | 'sedih' | 'marah',
             timestamp: new Date(log.created_at).toLocaleString('id-ID'),
