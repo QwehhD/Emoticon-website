@@ -182,8 +182,28 @@ async function handleMessage(topic: string, message: Buffer): Promise<void> {
       console.log(`  Emotion: ${emotion}`);
       console.log(`  Timestamp: ${timestamp}`);
       
-      // TODO: Save to database
-      console.log('✓ Emotion log processed (not saved to DB in standalone mode)');
+      // ✅ SAVE TO DATABASE
+      try {
+        const { data, error } = await supabase
+          .from('emotion_logs')
+          .insert([
+            {
+              card_uid: card_uid,
+              emotion: emotion,
+              timestamp: timestamp,
+            },
+          ])
+          .select();
+
+        if (error) {
+          console.error('❌ Failed to save to Supabase:', error);
+          return;
+        }
+
+        console.log('✅ Emotion log saved to database:', data);
+      } catch (error) {
+        console.error('❌ Exception while saving to database:', error);
+      }
     }
   } catch (error) {
     console.error('❌ JSON Parse Error:', error);
