@@ -53,8 +53,8 @@ export function useEmotionLogs() {
               .eq('uid', rawData.card_uid)
               .single();
               
-            if (data && data.name) {
-              studentName = data.name;
+            if (data && data.nama) {
+              studentName = data.nama;
             } else if (supabaseError) {
               console.error('Supabase fetch error:', supabaseError.message);
             }
