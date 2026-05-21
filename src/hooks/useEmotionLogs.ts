@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import mqtt from 'mqtt';
-import { EmotionLog } from '@/types/emotion';
+import { EmotionLog, EmotionType } from '@/types/emotion';
 
 interface MqttRawPayload {
   card_uid: string;
-  emotion: 'senang' | 'sedih' | 'marah';
+  emotion: EmotionType;
   timestamp: number;
 }
 
@@ -38,6 +38,7 @@ export function useEmotionLogs() {
       if (topic === 'v1/emotion/logs') {
         try {
           const rawData = JSON.parse(payload.toString()) as MqttRawPayload;
+          
           const incomingLog: EmotionLog = {
             id: rawData.card_uid.substring(0, 5),
             name: rawData.card_uid === "E240B8C3" ? "Dika (Valid)" : "Siswa SMK Telkom", 
@@ -45,6 +46,7 @@ export function useEmotionLogs() {
             emotion: rawData.emotion,
             timestamp: new Date(rawData.timestamp * 1000).toLocaleString('id-ID'),
           };
+
           setLogs((prevLogs) => [incomingLog, ...prevLogs].slice(0, 50));
         } catch (err) {
           console.error(err);
@@ -69,14 +71,16 @@ export function useEmotionLogs() {
     };
   }, []);
 
+  const stats = logs.reduce((acc, curr) => {
+    acc[curr.emotion] = (acc[curr.emotion] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
   return {
     logs,
     isConnected,
     loading,
     error,
-    stats: logs.reduce((acc, curr) => {
-      acc[curr.emotion] = (acc[curr.emotion] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>),
+    stats,
   };
 }
