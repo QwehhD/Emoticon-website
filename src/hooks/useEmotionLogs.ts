@@ -15,10 +15,10 @@ export function useEmotionLogs() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const brokerUrl = 'wss://YOUR_HIVEMQ_HOST:8884/mqtt'; 
+    const brokerUrl = 'wss://5e5be1b7ba1b4958a3f9bb8ada1424eb.s1.eu.hivemq.cloud:8884/mqtt'; 
     const options = {
-      username: 'YOUR_MQTT_USERNAME',
-      password: 'YOUR_MQTT_PASSWORD',
+      username: 'esp32_client',
+      password: 'gZiyEM81b3CBaxk2',
       clientId: 'nextjs_dashboard_' + Math.random().toString(16).substring(2, 8),
     };
 
