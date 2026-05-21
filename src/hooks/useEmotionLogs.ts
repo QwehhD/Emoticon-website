@@ -74,8 +74,9 @@ export function useEmotionLogs() {
     isConnected,
     loading,
     error,
-   stats: logs.reduce((acc, curr) => {
+    stats: logs.reduce((acc, curr) => {
       acc[curr.emotion] = (acc[curr.emotion] || 0) + 1;
       return acc;
     }, {} as Record<string, number>),
+  };
 }
