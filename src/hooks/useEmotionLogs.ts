@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import mqtt from 'mqtt';
+import { createClient } from '@supabase/supabase-js';
 import { EmotionLog, EmotionType } from '@/types/emotion';
 
 interface MqttRawPayload {
@@ -7,6 +8,10 @@ interface MqttRawPayload {
   emotion: EmotionType;
   timestamp: number;
 }
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export function useEmotionLogs() {
   const [logs, setLogs] = useState<EmotionLog[]>([]);
@@ -34,14 +39,32 @@ export function useEmotionLogs() {
       });
     });
 
-    client.on('message', (topic, payload) => {
+    client.on('message', async (topic, payload) => {
       if (topic === 'v1/emotion/logs') {
         try {
           const rawData = JSON.parse(payload.toString()) as MqttRawPayload;
           
+          let studentName = 'Siswa SMK Telkom';
+          
+          try {
+            const { data, error: supabaseError } = await supabase
+              .from('allowed_users')
+              .select('nama')
+              .eq('uid', rawData.card_uid)
+              .single();
+              
+            if (data && data.name) {
+              studentName = data.name;
+            } else if (supabaseError) {
+              console.error('Supabase fetch error:', supabaseError.message);
+            }
+          } catch (dbErr) {
+            console.error('Failed to query Supabase:', dbErr);
+          }
+
           const incomingLog: EmotionLog = {
             id: rawData.card_uid.substring(0, 5),
-            name: rawData.card_uid === "E240B8C3" ? "Dika (Valid)" : "Siswa SMK Telkom", 
+            name: studentName, 
             card_uid: rawData.card_uid,
             emotion: rawData.emotion,
             timestamp: new Date(rawData.timestamp * 1000).toLocaleString('id-ID'),
