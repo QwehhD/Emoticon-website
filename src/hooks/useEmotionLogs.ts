@@ -1,16 +1,11 @@
 import { useState, useEffect } from 'react';
+import mqtt from 'mqtt';
 import { EmotionLog } from '@/types/emotion';
 
-interface EmotionStats {
-  [emotion: string]: number;
-}
-
-interface ApiEmotionLog {
-  id: string;
+interface MqttRawPayload {
   card_uid: string;
-  emotion: string;
-  user_name?: string;
-  created_at: string;
+  emotion: 'senang' | 'sedih' | 'marah';
+  timestamp: number;
 }
 
 export function useEmotionLogs() {
@@ -18,60 +13,59 @@ export function useEmotionLogs() {
   const [isConnected, setIsConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<EmotionStats>({});
 
   useEffect(() => {
-    const fetchLogs = async () => {
-      try {
-        const response = await fetch('/api/emotion-logs');
-        if (!response.ok) throw new Error('Failed to fetch logs');
-        
-        const data = await response.json() as { data: ApiEmotionLog[] };
-        setIsConnected(true);
-        setError(null);
-
-        if (data.data && Array.isArray(data.data)) {
-          const transformedLogs = data.data.map((log: ApiEmotionLog) => ({
-            id: log.id,
-            name: log.user_name || 'Unknown User',
-            card_uid: log.card_uid,
-            emotion: log.emotion as 'senang' | 'sedih' | 'marah',
-            timestamp: new Date(log.created_at).toLocaleString('id-ID'),
-          }));
-          setLogs(transformedLogs.slice(0, 50));
-        }
-      } catch (err) {
-        setIsConnected(false);
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
-        setLoading(false);
-      }
+    const brokerUrl = 'wss://YOUR_HIVEMQ_HOST:8884/mqtt'; 
+    const options = {
+      username: 'YOUR_MQTT_USERNAME',
+      password: 'YOUR_MQTT_PASSWORD',
+      clientId: 'nextjs_dashboard_' + Math.random().toString(16).substring(2, 8),
     };
 
-    const fetchStats = async () => {
-      try {
-        // Get stats for a sample UID, or you can make this dynamic
-        const uid = 'E240B8C3';
-        const response = await fetch(`/api/emotion-logs/stats?uid=${uid}`);
-        if (response.ok) {
-          const data = await response.json() as { data: EmotionStats };
-          setStats(data.data || {});
+    setLoading(true);
+    const client = mqtt.connect(brokerUrl, options);
+
+    client.on('connect', () => {
+      setIsConnected(true);
+      setError(null);
+      setLoading(false);
+      client.subscribe('v1/emotion/logs', (err) => {
+        if (err) console.error(err);
+      });
+    });
+
+    client.on('message', (topic, payload) => {
+      if (topic === 'v1/emotion/logs') {
+        try {
+          const rawData = JSON.parse(payload.toString()) as MqttRawPayload;
+          const incomingLog: EmotionLog = {
+            id: rawData.card_uid.substring(0, 5),
+            name: rawData.card_uid === "E240B8C3" ? "Dika (Valid)" : "Siswa SMK Telkom", 
+            card_uid: rawData.card_uid,
+            emotion: rawData.emotion,
+            timestamp: new Date(rawData.timestamp * 1000).toLocaleString('id-ID'),
+          };
+          setLogs((prevLogs) => [incomingLog, ...prevLogs].slice(0, 50));
+        } catch (err) {
+          console.error(err);
         }
-      } catch (err) {
-        console.error('Failed to fetch stats:', err);
       }
-    };
+    });
 
-    fetchLogs();
-    fetchStats();
+    client.on('error', (err) => {
+      setError(err.message);
+      setIsConnected(false);
+      setLoading(false);
+    });
 
-    // Poll for new logs every 5 seconds
-    const pollInterval = setInterval(() => {
-      fetchLogs();
-    }, 5000);
+    client.on('close', () => {
+      setIsConnected(false);
+    });
 
     return () => {
-      clearInterval(pollInterval);
+      if (client) {
+        client.end();
+      }
     };
   }, []);
 
@@ -80,7 +74,6 @@ export function useEmotionLogs() {
     isConnected,
     loading,
     error,
-    stats,
+    stats: {},
   };
 }
-
