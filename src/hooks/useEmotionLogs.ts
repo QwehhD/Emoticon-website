@@ -20,7 +20,7 @@ export function useEmotionLogs() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const brokerUrl = 'wss://5e5be1b7ba1b4958a3f9bb8ada1424eb.s1.eu.hivemq.cloud:8884/mqtt'; 
+    const brokerUrl = 'wss://5e5be1b7ba1b4958a3f9bb8ada1424eb.s1.eu.hivemq.cloud:8884/mqtt';
     const options = {
       username: 'esp32_client',
       password: 'gZiyEM81b3CBaxk2',
@@ -34,6 +34,9 @@ export function useEmotionLogs() {
       setIsConnected(true);
       setError(null);
       setLoading(false);
+
+      client.publish('v1/emotion/logs', '', { retain: true, qos: 1 });
+
       client.subscribe('v1/emotion/logs', (err) => {
         if (err) console.error(err);
       });
@@ -43,16 +46,16 @@ export function useEmotionLogs() {
       if (topic === 'v1/emotion/logs') {
         try {
           const rawData = JSON.parse(payload.toString()) as MqttRawPayload;
-          
+
           let studentName = 'Siswa SMK Telkom';
-          
+
           try {
             const { data, error: supabaseError } = await supabase
               .from('allowed_users')
               .select('nama')
               .eq('uid', rawData.card_uid)
               .single();
-              
+
             if (data && data.nama) {
               studentName = data.nama;
             } else if (supabaseError) {
@@ -64,7 +67,7 @@ export function useEmotionLogs() {
 
           const incomingLog: EmotionLog = {
             id: rawData.card_uid.substring(0, 5),
-            name: studentName, 
+            name: studentName,
             card_uid: rawData.card_uid,
             emotion: rawData.emotion,
             timestamp: new Date(rawData.timestamp * 1000).toLocaleString('id-ID'),
