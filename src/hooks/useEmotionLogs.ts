@@ -44,8 +44,12 @@ export function useEmotionLogs() {
 
     client.on('message', async (topic, payload) => {
       if (topic === 'v1/emotion/logs') {
+        const payloadStr = payload.toString();
+
+        if (!payloadStr) return;
+
         try {
-          const rawData = JSON.parse(payload.toString()) as MqttRawPayload;
+          const rawData = JSON.parse(payloadStr) as MqttRawPayload;
 
           let studentName = 'Siswa SMK Telkom';
 
