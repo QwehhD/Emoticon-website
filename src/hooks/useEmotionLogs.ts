@@ -3,15 +3,25 @@ import mqtt from 'mqtt';
 import { createClient } from '@supabase/supabase-js';
 import { EmotionLog, EmotionType } from '@/types/emotion';
 
-interface MqttRawPayload {
+interface EmotionLogRow {
+  id: string;
   card_uid: string;
-  emotion: EmotionType;
-  timestamp: number;
+  emotion: EmotionType | string;
+  timestamp: number | string;
+  user_name?: string | null;
 }
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+const normalizeTimestamp = (value: number | string): number => {
+  const numeric = typeof value === 'string' ? Number(value) : value;
+  if (!Number.isFinite(numeric)) {
+    return Date.now();
+  }
+  return numeric < 1_000_000_000_000 ? numeric * 1000 : numeric;
+};
 
 export function useEmotionLogs() {
   const [logs, setLogs] = useState<EmotionLog[]>([]);
@@ -20,86 +30,170 @@ export function useEmotionLogs() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const brokerUrl = 'wss://5e5be1b7ba1b4958a3f9bb8ada1424eb.s1.eu.hivemq.cloud:8884/mqtt';
-    const options = {
-      username: 'esp32_client',
-      password: 'gZiyEM81b3CBaxk2',
-      clientId: 'nextjs_dashboard_' + Math.random().toString(16).substring(2, 8),
-    };
+    let isMounted = true;
+    let client: mqtt.MqttClient | null = null;
 
-    setLoading(true);
-    const client = mqtt.connect(brokerUrl, options);
+    const fetchLogs = async (showLoading = true) => {
+      if (showLoading) {
+        setLoading(true);
+      }
 
-    client.on('connect', () => {
-      setIsConnected(true);
-      setError(null);
-      setLoading(false);
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('emotion_logs')
+          .select('*')
+          .order('timestamp', { ascending: false })
+          .limit(100);
 
-      client.publish('v1/emotion/logs', '', { retain: true, qos: 1 });
+        if (!isMounted) return;
 
-      client.subscribe('v1/emotion/logs', (err) => {
-        if (err) console.error(err);
-      });
-    });
+        if (fetchError) {
+          setError(fetchError.message);
+          return;
+        }
 
-    client.on('message', async (topic, payload) => {
-      if (topic === 'v1/emotion/logs') {
-        const payloadStr = payload.toString();
+        const mappedLogs =
+          data?.map((log: EmotionLogRow) => ({
+            id: log.id,
+            name: log.user_name?.trim() ? log.user_name : log.card_uid,
+            card_uid: log.card_uid,
+            emotion: log.emotion as EmotionType,
+            timestamp: normalizeTimestamp(log.timestamp),
+          })) ?? [];
 
-        if (!payloadStr) return;
-
-        try {
-          const rawData = JSON.parse(payloadStr) as MqttRawPayload;
-
-          let studentName = 'Siswa SMK Telkom';
-
-          try {
-            const { data, error: supabaseError } = await supabase
-              .from('allowed_users')
-              .select('nama')
-              .eq('uid', rawData.card_uid)
-              .single();
-
-            if (data && data.nama) {
-              studentName = data.nama;
-            } else if (supabaseError) {
-              console.error('Supabase fetch error:', supabaseError.message);
-            }
-          } catch (dbErr) {
-            console.error('Failed to query Supabase:', dbErr);
-          }
-
-          const incomingLog: EmotionLog = {
-            id: rawData.card_uid.substring(0, 5),
-            name: studentName,
-            card_uid: rawData.card_uid,
-            emotion: rawData.emotion,
-            timestamp: new Date(rawData.timestamp * 1000).toLocaleString('id-ID'),
-          };
-
-          setLogs((prevLogs) => [incomingLog, ...prevLogs].slice(0, 50));
-        } catch (err) {
-          console.error(err);
+        setLogs(mappedLogs);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch emotion logs:', err);
+        if (isMounted) {
+          setError('Failed to fetch emotion logs.');
+        }
+      } finally {
+        if (isMounted && showLoading) {
+          setLoading(false);
         }
       }
-    });
+    };
 
-    client.on('error', (err) => {
-      setError(err.message);
-      setIsConnected(false);
-      setLoading(false);
-    });
+    const connectMqtt = () => {
+      const brokerUrl =
+        'wss://5e5be1b7ba1b4958a3f9bb8ada1424eb.s1.eu.hivemq.cloud:8884/mqtt';
+      const options = {
+        username: 'esp32_client',
+        password: 'gZiyEM81b3CBaxk2',
+        clientId: 'nextjs_dashboard_' + Math.random().toString(16).substring(2, 8),
+      };
 
-    client.on('close', () => {
-      setIsConnected(false);
-    });
+      client = mqtt.connect(brokerUrl, options);
+
+      client.on('connect', () => {
+        setIsConnected(true);
+
+        client?.publish('v1/emotion/logs', '', { retain: true, qos: 1 });
+
+        client?.subscribe('v1/emotion/logs', (err) => {
+          if (err) console.error(err);
+        });
+      });
+
+      client.on('message', async (topic, payload) => {
+        if (topic === 'v1/emotion/logs') {
+          const payloadStr = payload.toString();
+
+          if (!payloadStr) return;
+
+          try {
+            JSON.parse(payloadStr);
+            await fetchLogs(false);
+          } catch (err) {
+            console.error(err);
+          }
+        }
+      });
+
+      client.on('error', (err) => {
+        setError(err.message);
+        setIsConnected(false);
+      });
+
+      client.on('close', () => {
+        setIsConnected(false);
+      });
+    };
+
+    const initialize = async () => {
+      await fetchLogs(true);
+      if (!isMounted) return;
+      connectMqtt();
+    };
+
+    initialize();
 
     return () => {
-      if (client) {
-        client.end();
-      }
+      isMounted = false;
+      client?.end();
     };
   }, []);
+
+  const deleteLog = async (id: string): Promise<boolean> => {
+    try {
+      const { error: deleteError } = await supabase
+        .from('emotion_logs')
+        .delete()
+        .eq('id', id);
+
+      if (deleteError) {
+        setError(deleteError.message);
+        return false;
+      }
+
+      setLogs((prevLogs) => prevLogs.filter((log) => log.id !== id));
+      return true;
+    } catch (err) {
+      console.error('Failed to delete emotion log:', err);
+      setError('Failed to delete emotion log.');
+      return false;
+    }
+  };
+
+  const updateLog = async (
+    id: string,
+    updates: { name: string; emotion: EmotionType }
+  ): Promise<boolean> => {
+    const normalizedName = updates.name.trim();
+
+    try {
+      const { error: updateError } = await supabase
+        .from('emotion_logs')
+        .update({
+          user_name: normalizedName || null,
+          emotion: updates.emotion,
+        })
+        .eq('id', id);
+
+      if (updateError) {
+        setError(updateError.message);
+        return false;
+      }
+
+      setLogs((prevLogs) =>
+        prevLogs.map((log) =>
+          log.id === id
+            ? {
+                ...log,
+                name: normalizedName || log.card_uid,
+                emotion: updates.emotion,
+              }
+            : log
+        )
+      );
+      return true;
+    } catch (err) {
+      console.error('Failed to update emotion log:', err);
+      setError('Failed to update emotion log.');
+      return false;
+    }
+  };
 
   const stats = logs.reduce((acc, curr) => {
     acc[curr.emotion] = (acc[curr.emotion] || 0) + 1;
@@ -112,5 +206,7 @@ export function useEmotionLogs() {
     loading,
     error,
     stats,
+    deleteLog,
+    updateLog,
   };
 }
