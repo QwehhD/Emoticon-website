@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import mqtt from 'mqtt';
 import { createClient } from '@supabase/supabase-js';
 import { EmotionLog, EmotionType } from '@/types/emotion';
+import { saveEmotionLog } from '@/lib/emotion-logger';
 
 interface EmotionLogRow {
   id: string;
@@ -103,7 +104,12 @@ export function useEmotionLogs() {
           if (!payloadStr) return;
 
           try {
-            JSON.parse(payloadStr);
+            const parsed = JSON.parse(payloadStr);
+            const { card_uid, emotion, timestamp } = parsed;
+
+            if (!card_uid || !emotion || !timestamp) return;
+
+            await saveEmotionLog({ card_uid, emotion, timestamp });
             await fetchLogs(false);
           } catch (err) {
             console.error(err);
