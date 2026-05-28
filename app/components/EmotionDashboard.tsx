@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import { Heart, BarChart3, TrendingUp } from 'lucide-react';
-import { EMOTION_CONFIG } from '@/types/emotion';
-import { useEmotionLogs } from '@/hooks/useEmotionLogs';
+import { EMOTION_CONFIG, EmotionLog } from '@/types/emotion';
 
 interface StatChartProps {
   stats: Record<string, number>;
@@ -63,8 +62,15 @@ interface FilterOptions {
   emotion?: string;
 }
 
-export function EmotionDashboard() {
-  const { logs, stats, isConnected, loading, error } = useEmotionLogs();
+interface EmotionDashboardProps {
+  logs: EmotionLog[];
+  stats: Record<string, number>;
+  isConnected: boolean;
+  loading: boolean;
+  error: string | null;
+}
+
+export function EmotionDashboard({ logs, stats, isConnected, loading, error }: EmotionDashboardProps) {
   const [filter, setFilter] = useState<FilterOptions>({});
 
   const filteredLogs = logs.filter((log) => {

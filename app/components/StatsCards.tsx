@@ -1,10 +1,13 @@
 'use client';
 
 import { CreditCard, User, Smile } from 'lucide-react';
-import { useEmotionLogs } from '@/hooks/useEmotionLogs';
+import { EmotionLog } from '@/types/emotion';
 
-export function StatsCards() {
-  const { logs } = useEmotionLogs();
+interface StatsCardsProps {
+  logs: EmotionLog[];
+}
+
+export function StatsCards({ logs }: StatsCardsProps) {
 
   const totalScans = logs.length;
   const activeUsers = new Set(logs.map((log) => log.card_uid)).size;
