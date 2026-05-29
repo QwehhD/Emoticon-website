@@ -53,11 +53,21 @@ export function useEmotionLogs() {
           return;
         }
 
+        const { data: allowedUsers } = await supabase
+          .from('allowed_users')
+          .select('uid, nama');
+
+        const uidToName: Record<string, string> = {};
+        allowedUsers?.forEach((u: { uid: string; nama: string }) => {
+          uidToName[u.uid] = u.nama;
+        });
+
         const mappedLogs =
           data?.map((log: EmotionLogRow) => ({
             id: log.id,
             name: log.user_name?.trim() ? log.user_name : log.card_uid,
             card_uid: log.card_uid,
+            owner_name: uidToName[log.card_uid],
             emotion: log.emotion as EmotionType,
             timestamp: normalizeTimestamp(log.timestamp),
           })) ?? [];

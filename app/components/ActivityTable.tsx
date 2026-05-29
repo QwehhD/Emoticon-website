@@ -97,9 +97,14 @@ export function ActivityTable({ logs, deleteLog, updateLog }: ActivityTableProps
                     </td>
 
                     <td className="px-6 py-4">
-                      <span className="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-1 rounded border border-slate-200">
-                        {log.card_uid}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-1 rounded border border-slate-200 w-fit">
+                          {log.card_uid}
+                        </span>
+                        {log.owner_name && (
+                          <span className="text-xs text-slate-500 font-medium">{log.owner_name}</span>
+                        )}
+                      </div>
                     </td>
 
                     <td className="px-6 py-4">
