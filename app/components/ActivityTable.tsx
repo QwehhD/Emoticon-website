@@ -72,7 +72,7 @@ export function ActivityTable({ logs, deleteLog, updateLog }: ActivityTableProps
 
                 return (
                   <tr
-                    key={`${log.name}-${log.timestamp}`}
+                    key={`${log.owner_name}-${log.timestamp}`}
                     className="hover:bg-slate-50/80 transition-colors group"
                   >
                     <td className="px-6 py-4">
