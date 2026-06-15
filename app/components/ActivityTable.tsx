@@ -4,13 +4,20 @@ import { useState } from 'react';
 import { Clock, PencilLine, Trash2, Save, X } from 'lucide-react';
 import { EmotionLog, EmotionType, EMOTION_CONFIG } from '@/types/emotion';
 
+// Definisikan interface sesuai dengan struktur tabel allowed_users di gambar.png
+interface AllowedUser {
+  uid: string;
+  nama: string;
+}
+
 interface ActivityTableProps {
   logs: EmotionLog[];
+  allowedUsers?: AllowedUser[]; // Prop tambahan untuk mapping nama dari database
   deleteLog: (id: string) => Promise<boolean>;
   updateLog: (id: string, updates: { name: string; emotion: EmotionType }) => Promise<boolean>;
 }
 
-export function ActivityTable({ logs, deleteLog, updateLog }: ActivityTableProps) {
+export function ActivityTable({ logs, allowedUsers, deleteLog, updateLog }: ActivityTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editEmotion, setEditEmotion] = useState<EmotionType>('senang');
@@ -19,7 +26,9 @@ export function ActivityTable({ logs, deleteLog, updateLog }: ActivityTableProps
 
   const startEdit = (log: EmotionLog) => {
     setEditingId(log.id);
-    setEditName(log.name || '');
+    // Ambil nama eksisting saat edit
+    const matchedUser = allowedUsers?.find(u => u.uid === log.card_uid);
+    setEditName(matchedUser?.nama || log.name || '');
     setEditEmotion(log.emotion);
   };
 
@@ -67,15 +76,27 @@ export function ActivityTable({ logs, deleteLog, updateLog }: ActivityTableProps
                 const isEditing = editingId === log.id;
                 const isSaving = savingId === log.id;
                 const isDeleting = deletingId === log.id;
-                const fallbackName = log.name ? log.name : 'Unknown User';
+
+                // 1. Logika Sinkronisasi Nama Berdasarkan gambar.png
+                const matchedUser = allowedUsers?.find(u => u.uid === log.card_uid);
+                
+                let fallbackName = 'Unknown User';
+                if (matchedUser?.nama) {
+                  fallbackName = matchedUser.nama; // Menggunakan kolom 'nama' dari allowed_users
+                } else if ((log as any).nama) {
+                  fallbackName = (log as any).nama;
+                } else if (log.name && log.name !== log.card_uid) {
+                  fallbackName = log.name;
+                }
+
                 const displayName = isEditing ? editName : fallbackName;
                 const displayInitial = displayName.trim().charAt(0).toUpperCase() || '?';
 
+                // 2. Logika Fallback Emoji Berdasarkan Kasus dsadasds.png
+                const config = EMOTION_CONFIG[log.emotion];
+
                 return (
-                  <tr
-                    key={`${log.id}-${log.timestamp}`}
-                    className="hover:bg-slate-50/80 transition-colors group"
-                  >
+                  <tr key={`${log.id}-${log.timestamp}`} className="hover:bg-slate-50/80 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center font-bold text-green-600 group-hover:bg-green-100 transition-colors">
@@ -90,7 +111,7 @@ export function ActivityTable({ logs, deleteLog, updateLog }: ActivityTableProps
                               placeholder="Nama pengguna"
                             />
                           ) : (
-                            <span className="text-sm font-bold text-slate-800">{fallbackName}</span>
+                            <span className="text-sm font-bold text-slate-800">{displayName}</span>
                           )}
                           <span className="text-[10px] text-slate-400 font-mono tracking-tighter uppercase">{log.id}</span>
                         </div>
@@ -118,12 +139,18 @@ export function ActivityTable({ logs, deleteLog, updateLog }: ActivityTableProps
                             ))}
                           </select>
                         ) : (
-                          <div
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${EMOTION_CONFIG[log.emotion]?.bgColor} ${EMOTION_CONFIG[log.emotion]?.textColor}`}
-                          >
-                            <span className="text-lg">{EMOTION_CONFIG[log.emotion]?.emoji}</span>
-                            {EMOTION_CONFIG[log.emotion]?.label}
-                          </div>
+                          /* Jika config cocok, tampilkan emoji asli. Jika zonk/kosong, tampilkan fallback Netral */
+                          config ? (
+                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${config.bgColor} ${config.textColor}`}>
+                              <span className="text-lg">{config.emoji}</span>
+                              {config.label}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm bg-slate-100 text-slate-400 border border-slate-200-]+">
+                              <span className="text-lg">😐</span>
+                              Tidak Ada Data
+                            </div>
+                          )
                         )}
                       </div>
                     </td>
