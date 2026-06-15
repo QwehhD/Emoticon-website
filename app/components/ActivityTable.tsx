@@ -19,7 +19,7 @@ export function ActivityTable({ logs, deleteLog, updateLog }: ActivityTableProps
 
   const startEdit = (log: EmotionLog) => {
     setEditingId(log.id);
-    setEditName(log.name);
+    setEditName(log.name || '');
     setEditEmotion(log.emotion);
   };
 
@@ -67,12 +67,13 @@ export function ActivityTable({ logs, deleteLog, updateLog }: ActivityTableProps
                 const isEditing = editingId === log.id;
                 const isSaving = savingId === log.id;
                 const isDeleting = deletingId === log.id;
-                const displayName = isEditing ? editName : log.name;
-                const displayInitial = displayName?.trim().charAt(0)?.toUpperCase() || '?';
+                const fallbackName = log.name ? log.name : 'Unknown User';
+                const displayName = isEditing ? editName : fallbackName;
+                const displayInitial = displayName.trim().charAt(0).toUpperCase() || '?';
 
                 return (
                   <tr
-                    key={`${log.name}-${log.timestamp}`}
+                    key={`${log.id}-${log.timestamp}`}
                     className="hover:bg-slate-50/80 transition-colors group"
                   >
                     <td className="px-6 py-4">
@@ -89,7 +90,7 @@ export function ActivityTable({ logs, deleteLog, updateLog }: ActivityTableProps
                               placeholder="Nama pengguna"
                             />
                           ) : (
-                            <span className="text-sm font-bold text-slate-800">{log.name}</span>
+                            <span className="text-sm font-bold text-slate-800">{fallbackName}</span>
                           )}
                           <span className="text-[10px] text-slate-400 font-mono tracking-tighter uppercase">{log.id}</span>
                         </div>

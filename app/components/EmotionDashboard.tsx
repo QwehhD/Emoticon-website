@@ -79,7 +79,14 @@ export function EmotionDashboard({ logs, stats, isConnected, loading, error }: E
     return true;
   });
 
-  const uniqueUIDs = [...new Set(logs.map((log) => log.card_uid))];
+  // Membuat mapping UID ke Nama untuk dropdown agar lebih informatif
+  const userMap = new Map<string, string>();
+  logs.forEach((log) => {
+    if (log.name || !userMap.has(log.card_uid)) {
+      userMap.set(log.card_uid, log.name || 'Unknown User');
+    }
+  });
+  const uniqueUsers = Array.from(userMap.entries());
 
   return (
     <div className="space-y-6">
@@ -117,7 +124,7 @@ export function EmotionDashboard({ logs, stats, isConnected, loading, error }: E
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
-              User UID
+              User
             </label>
             <select
               value={filter.uid || ''}
@@ -125,9 +132,9 @@ export function EmotionDashboard({ logs, stats, isConnected, loading, error }: E
               className="w-full px-4 py-2 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">All Users</option>
-              {uniqueUIDs.map((uid) => (
+              {uniqueUsers.map(([uid, name]) => (
                 <option key={uid} value={uid}>
-                  {uid}
+                  {name} ({uid})
                 </option>
               ))}
             </select>
@@ -173,39 +180,42 @@ export function EmotionDashboard({ logs, stats, isConnected, loading, error }: E
           <table className="w-full text-left">
             <thead>
               <tr className="bg-slate-50/50 text-slate-400 text-xs uppercase tracking-widest font-bold border-b border-slate-100">
-                <th className="px-4 py-3">User</th>
+                <th className="px-4 py-3">User Details</th>
                 <th className="px-4 py-3">UID</th>
                 <th className="px-4 py-3 text-center">Emotion</th>
                 <th className="px-4 py-3">Time</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {filteredLogs.slice(0, 20).map((log) => (
-                <tr key={`${log.id}-${log.timestamp}`} className="hover:bg-slate-50/50 transition">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-600">
-                        {log.name.charAt(0)}
+              {filteredLogs.slice(0, 20).map((log) => {
+                const displayName = log.name || 'Unknown User';
+                return (
+                  <tr key={`${log.id}-${log.timestamp}`} className="hover:bg-slate-50/50 transition">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-600">
+                          {displayName.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="text-sm font-medium text-slate-800">{displayName}</span>
                       </div>
-                      <span className="text-sm font-medium">{log.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-1 rounded">
-                      {log.card_uid}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm font-bold ${
-                      EMOTION_CONFIG[log.emotion]?.bgColor || 'bg-slate-100'
-                    } ${EMOTION_CONFIG[log.emotion]?.textColor || 'text-slate-600'}`}>
-                      {EMOTION_CONFIG[log.emotion]?.emoji || '😐'}
-                      {EMOTION_CONFIG[log.emotion]?.label || log.emotion}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-500">{log.timestamp}</td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-1 rounded">
+                        {log.card_uid}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm font-bold ${
+                        EMOTION_CONFIG[log.emotion]?.bgColor || 'bg-slate-100'
+                      } ${EMOTION_CONFIG[log.emotion]?.textColor || 'text-slate-600'}`}>
+                        {EMOTION_CONFIG[log.emotion]?.emoji || '😐'}
+                        {EMOTION_CONFIG[log.emotion]?.label || log.emotion}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-500">{log.timestamp}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
