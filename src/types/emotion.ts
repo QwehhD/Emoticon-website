@@ -4,7 +4,7 @@ export interface EmotionLog {
   id: string;
   name: string;
   card_uid: string;
-  owner_name?: string; // ← tambah ini (optional)
+  owner_name?: string;
   emotion: EmotionType;
   timestamp: string;
 }
