@@ -9,7 +9,7 @@ export default function DashboardPage() {
   const { logs, isConnected, loading, error, deleteLog, updateLog } = useEmotionLogs();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
-  const [editEmotion, setEditEmotion] = useState<EmotionType>('senang');
+  const [editEmotion, setEditEmotion] = useState<EmotionType>('Bersemangat');
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
