@@ -69,7 +69,8 @@ export function useEmotionLogs() {
             card_uid: log.card_uid,
             owner_name: uidToName[log.card_uid],
             emotion: log.emotion as EmotionType,
-            timestamp: normalizeTimestamp(log.timestamp),
+            // 🔥 PERBAIKAN: Bungkus dengan new Date().toISOString() agar bertipe string sesuai isi EmotionLog
+            timestamp: new Date(normalizeTimestamp(log.timestamp)).toISOString(),
           })) ?? [];
 
         setLogs(mappedLogs);
