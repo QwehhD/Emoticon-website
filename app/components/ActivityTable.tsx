@@ -19,16 +19,17 @@ interface ActivityTableProps {
 // Helper untuk standarisasi string emosi dari database/hardware
 const getEmotionConfig = (emotionStr: string) => {
   if (!emotionStr) return null;
-  const key = emotionStr.trim().toLowerCase();
-  
-  if (key === 'marah') return EMOTION_CONFIG['Marah'];
-  if (key === 'sedih') return EMOTION_CONFIG['Sedih'];
-  if (key === 'cemas') return EMOTION_CONFIG['Cemas'];
-  if (key === 'malas') return EMOTION_CONFIG['Malas'];
-  if (key === 'tenang') return EMOTION_CONFIG['Tenang'];
-  if (key === 'bersemangat' || key === 'senang') return EMOTION_CONFIG['Bersemangat'];
-  
-  return EMOTION_CONFIG[emotionStr as EmotionType] || null;
+  const map: Record<string, EmotionType> = {
+    senang: 'Bersemangat',
+    bersemangat: 'Bersemangat',
+    sedih: 'Sedih',
+    marah: 'Marah',
+    cemas: 'Cemas',
+    malas: 'Malas',
+    tenang: 'Tenang',
+  };
+  const normalized = map[emotionStr.trim().toLowerCase()] ?? (emotionStr as EmotionType);
+  return EMOTION_CONFIG[normalized] ?? null;
 };
 
 export function ActivityTable({ logs, allowedUsers, deleteLog, updateLog }: ActivityTableProps) {

@@ -79,11 +79,12 @@ export function useEmotionLogs() {
         const mappedLogs =
           data?.map((log: EmotionLogRow) => ({
             id: log.id,
-            name: log.user_name?.trim() ? log.user_name : log.card_uid,
+            name: log.user_name?.trim()
+              ? log.user_name
+              : uidToName[log.card_uid] ?? log.card_uid,
             card_uid: log.card_uid,
-            owner_name: uidToName[log.card_uid],
             emotion: normalizeEmotion(log.emotion as string),
-            timestamp: normalizeTimestamp(log.timestamp), // ← konversi ke number
+            timestamp: normalizeTimestamp(log.timestamp),
           })) ?? [];
 
         setLogs(mappedLogs);
