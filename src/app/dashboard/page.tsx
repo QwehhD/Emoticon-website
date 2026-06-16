@@ -5,6 +5,21 @@ import { Clock, AlertCircle, CheckCircle, Loader, PencilLine, Trash2, Save, X } 
 import { useEmotionLogs } from '@/hooks/useEmotionLogs';
 import { EMOTION_CONFIG, EmotionLog, EmotionType } from '@/types/emotion';
 
+// Helper aman untuk ambil config emotion, handle format lama maupun baru
+const getEmotionConfig = (emotion: string) => {
+  const map: Record<string, EmotionType> = {
+    senang: 'Bersemangat',
+    bersemangat: 'Bersemangat',
+    sedih: 'Sedih',
+    marah: 'Marah',
+    cemas: 'Cemas',
+    malas: 'Malas',
+    tenang: 'Tenang',
+  };
+  const normalized = map[emotion?.trim().toLowerCase()] ?? (emotion as EmotionType);
+  return EMOTION_CONFIG[normalized] ?? EMOTION_CONFIG['Bersemangat'];
+};
+
 export default function DashboardPage() {
   const { logs, isConnected, loading, error, deleteLog, updateLog } = useEmotionLogs();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -143,6 +158,7 @@ export default function DashboardPage() {
                     const displayInitial = displayName?.trim().charAt(0)?.toUpperCase() || '?';
                     const isSaving = savingId === log.id;
                     const isDeleting = deletingId === log.id;
+                    const emotionConfig = getEmotionConfig(log.emotion); // ← pakai helper aman
 
                     return (
                       <tr
@@ -194,11 +210,10 @@ export default function DashboardPage() {
                                 ))}
                               </select>
                             ) : (
-                              <div
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${EMOTION_CONFIG[log.emotion].bgColor} ${EMOTION_CONFIG[log.emotion].textColor}`}
-                              >
-                                <span className="text-base">{EMOTION_CONFIG[log.emotion].emoji}</span>
-                                {EMOTION_CONFIG[log.emotion].label}
+                              // ← pakai emotionConfig yang sudah aman, tidak akan crash
+                              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${emotionConfig.bgColor} ${emotionConfig.textColor}`}>
+                                <span className="text-base">{emotionConfig.emoji}</span>
+                                {emotionConfig.label}
                               </div>
                             )}
                           </div>

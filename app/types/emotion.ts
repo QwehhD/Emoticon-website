@@ -5,7 +5,7 @@ export interface EmotionLog {
   name: string;
   card_uid: string;
   emotion: EmotionType;
-  timestamp: string;
+  timestamp: number; // ← ubah dari string ke number
 }
 
 export interface EmotionConfigItem {

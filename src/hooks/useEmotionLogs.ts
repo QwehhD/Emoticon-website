@@ -83,7 +83,7 @@ export function useEmotionLogs() {
             card_uid: log.card_uid,
             owner_name: uidToName[log.card_uid],
             emotion: normalizeEmotion(log.emotion as string),
-            timestamp: String(normalizeTimestamp(log.timestamp)), // ← konversi ke string
+            timestamp: normalizeTimestamp(log.timestamp), // ← konversi ke number
           })) ?? [];
 
         setLogs(mappedLogs);
