@@ -1,13 +1,42 @@
 'use client';
 
 import { useState } from 'react';
-import { Heart, BarChart3, TrendingUp } from 'lucide-react';
-import { EMOTION_CONFIG, EmotionLog } from '@/types/emotion';
+import { Heart, BarChart3, TrendingUp, Clock } from 'lucide-react';
+import { EMOTION_CONFIG, EmotionLog, EmotionType } from '@/types/emotion';
+
+interface AllowedUser {
+  uid: string;
+  nama: string;
+}
 
 interface StatChartProps {
   stats: Record<string, number>;
   title?: string;
 }
+
+interface EmotionDashboardProps {
+  logs: EmotionLog[];
+  stats: Record<string, number>;
+  isConnected: boolean;
+  loading: boolean;
+  error: string | null;
+  allowedUsers?: AllowedUser[]; // Tambahan opsional sinkronisasi nama ke dropdown filter
+}
+
+// Helper proteksi case-insensitive untuk data chart dan analisis grafik
+const getEmotionConfig = (emotionStr: string) => {
+  if (!emotionStr) return null;
+  const key = emotionStr.trim().toLowerCase();
+  
+  if (key === 'marah') return EMOTION_CONFIG['Marah'];
+  if (key === 'sedih') return EMOTION_CONFIG['Sedih'];
+  if (key === 'cemas') return EMOTION_CONFIG['Cemas'];
+  if (key === 'malas') return EMOTION_CONFIG['Malas'];
+  if (key === 'tenang') return EMOTION_CONFIG['Tenang'];
+  if (key === 'bersemangat' || key === 'senang') return EMOTION_CONFIG['Bersemangat'];
+  
+  return EMOTION_CONFIG[emotionStr as EmotionType] || null;
+};
 
 export function StatChart({ stats, title = 'Emotion Distribution' }: StatChartProps) {
   const total = Object.values(stats).reduce((a, b) => a + b, 0);
@@ -30,7 +59,7 @@ export function StatChart({ stats, title = 'Emotion Distribution' }: StatChartPr
       <div className="space-y-4">
         {Object.entries(stats).map(([emotion, count]) => {
           const percentage = ((count / total) * 100).toFixed(1);
-          const config = EMOTION_CONFIG[emotion as keyof typeof EMOTION_CONFIG];
+          const config = getEmotionConfig(emotion);
 
           return (
             <div key={emotion}>
@@ -62,28 +91,25 @@ interface FilterOptions {
   emotion?: string;
 }
 
-interface EmotionDashboardProps {
-  logs: EmotionLog[];
-  stats: Record<string, number>;
-  isConnected: boolean;
-  loading: boolean;
-  error: string | null;
-}
-
-export function EmotionDashboard({ logs, stats, isConnected, loading, error }: EmotionDashboardProps) {
+export function EmotionDashboard({ logs, stats, isConnected, loading, error, allowedUsers }: EmotionDashboardProps) {
   const [filter, setFilter] = useState<FilterOptions>({});
 
+  // Filter logs dengan penanganan pencocokan emosi yang aman
   const filteredLogs = logs.filter((log) => {
     if (filter.uid && log.card_uid !== filter.uid) return false;
-    if (filter.emotion && log.emotion !== filter.emotion) return false;
+    if (filter.emotion) {
+      const config = getEmotionConfig(log.emotion);
+      if (!config || config.label !== filter.emotion) return false;
+    }
     return true;
   });
 
-  // Membuat mapping UID ke Nama untuk dropdown agar lebih informatif
+  // Membuat mapping UID ke Nama terpusat agar opsi dropdown rapi
   const userMap = new Map<string, string>();
   logs.forEach((log) => {
-    if (log.name || !userMap.has(log.card_uid)) {
-      userMap.set(log.card_uid, log.name || 'Unknown User');
+    if (!userMap.has(log.card_uid)) {
+      const matched = allowedUsers?.find(u => u.uid === log.card_uid);
+      userMap.set(log.card_uid, matched?.nama || log.name || 'Unknown User');
     }
   });
   const uniqueUsers = Array.from(userMap.entries());
@@ -129,7 +155,7 @@ export function EmotionDashboard({ logs, stats, isConnected, loading, error }: E
             <select
               value={filter.uid || ''}
               onChange={(e) => setFilter({ ...filter, uid: e.target.value || undefined })}
-              className="w-full px-4 py-2 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm bg-white"
             >
               <option value="">All Users</option>
               {uniqueUsers.map(([uid, name]) => (
@@ -147,7 +173,7 @@ export function EmotionDashboard({ logs, stats, isConnected, loading, error }: E
             <select
               value={filter.emotion || ''}
               onChange={(e) => setFilter({ ...filter, emotion: e.target.value || undefined })}
-              className="w-full px-4 py-2 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm bg-white"
             >
               <option value="">All Emotions</option>
               {Object.entries(EMOTION_CONFIG).map(([key, config]) => (
@@ -170,10 +196,10 @@ export function EmotionDashboard({ logs, stats, isConnected, loading, error }: E
           Recent Activity ({filteredLogs.length} entries)
         </h3>
 
-        {loading && <p className="text-slate-500">Loading...</p>}
+        {loading && <p className="text-slate-500 text-sm p-2">Loading...</p>}
 
         {!loading && filteredLogs.length === 0 && (
-          <p className="text-slate-400">No emotion logs found</p>
+          <p className="text-slate-400 text-sm p-2">No emotion logs found</p>
         )}
 
         <div className="overflow-x-auto">
@@ -188,7 +214,10 @@ export function EmotionDashboard({ logs, stats, isConnected, loading, error }: E
             </thead>
             <tbody className="divide-y divide-slate-50">
               {filteredLogs.slice(0, 20).map((log) => {
-                const displayName = log.name || 'Unknown User';
+                const matchedUser = allowedUsers?.find(u => u.uid === log.card_uid);
+                const displayName = matchedUser?.nama || log.name || 'Unknown User';
+                const config = getEmotionConfig(log.emotion);
+
                 return (
                   <tr key={`${log.id}-${log.timestamp}`} className="hover:bg-slate-50/50 transition">
                     <td className="px-4 py-3">
@@ -206,13 +235,23 @@ export function EmotionDashboard({ logs, stats, isConnected, loading, error }: E
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm font-bold ${
-                        EMOTION_CONFIG[log.emotion]?.bgColor || 'bg-slate-100'
-                      } ${EMOTION_CONFIG[log.emotion]?.textColor || 'text-slate-600'}`}>
-                        {EMOTION_CONFIG[log.emotion]?.emoji || '😐'}
-                        {EMOTION_CONFIG[log.emotion]?.label || log.emotion}
+                        config?.bgColor || 'bg-slate-100'
+                      } ${config?.textColor || 'text-slate-600'}`}>
+                        {config?.emoji || '😐'}
+                        {config?.label || log.emotion || 'Tidak Ada Data'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-500">{log.timestamp}</td>
+                    <td className="px-4 py-3 text-sm text-slate-500">
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-slate-300" />
+                        {new Date(log.timestamp).toLocaleString('id-ID', {
+                          day: '2-digit',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </div>
+                    </td>
                   </tr>
                 );
               })}

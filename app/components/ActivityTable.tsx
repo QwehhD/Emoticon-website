@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Clock, PencilLine, Trash2, Save, X } from 'lucide-react';
 import { EmotionLog, EmotionType, EMOTION_CONFIG } from '@/types/emotion';
 
-// Definisikan interface sesuai dengan struktur tabel allowed_users di gambar.png
 interface AllowedUser {
   uid: string;
   nama: string;
@@ -12,24 +11,41 @@ interface AllowedUser {
 
 interface ActivityTableProps {
   logs: EmotionLog[];
-  allowedUsers?: AllowedUser[]; // Prop tambahan untuk mapping nama dari database
+  allowedUsers?: AllowedUser[];
   deleteLog: (id: string) => Promise<boolean>;
   updateLog: (id: string, updates: { name: string; emotion: EmotionType }) => Promise<boolean>;
 }
 
+// Helper untuk standarisasi string emosi dari database/hardware
+const getEmotionConfig = (emotionStr: string) => {
+  if (!emotionStr) return null;
+  const key = emotionStr.trim().toLowerCase();
+  
+  if (key === 'marah') return EMOTION_CONFIG['Marah'];
+  if (key === 'sedih') return EMOTION_CONFIG['Sedih'];
+  if (key === 'cemas') return EMOTION_CONFIG['Cemas'];
+  if (key === 'malas') return EMOTION_CONFIG['Malas'];
+  if (key === 'tenang') return EMOTION_CONFIG['Tenang'];
+  if (key === 'bersemangat' || key === 'senang') return EMOTION_CONFIG['Bersemangat'];
+  
+  return EMOTION_CONFIG[emotionStr as EmotionType] || null;
+};
+
 export function ActivityTable({ logs, allowedUsers, deleteLog, updateLog }: ActivityTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
-  const [editEmotion, setEditEmotion] = useState<EmotionType>('senang');
+  const [editEmotion, setEditEmotion] = useState<EmotionType>('Bersemangat'); // Fallback default ke key valid
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const startEdit = (log: EmotionLog) => {
     setEditingId(log.id);
-    // Ambil nama eksisting saat edit
     const matchedUser = allowedUsers?.find(u => u.uid === log.card_uid);
     setEditName(matchedUser?.nama || log.name || '');
-    setEditEmotion(log.emotion);
+    
+    // Pastikan nilai edit emotion divalidasi ke format Capitalized
+    const config = getEmotionConfig(log.emotion);
+    setEditEmotion(config ? (config.label as EmotionType) : 'Bersemangat');
   };
 
   const cancelEdit = () => setEditingId(null);
@@ -77,12 +93,11 @@ export function ActivityTable({ logs, allowedUsers, deleteLog, updateLog }: Acti
                 const isSaving = savingId === log.id;
                 const isDeleting = deletingId === log.id;
 
-                // 1. Logika Sinkronisasi Nama Berdasarkan gambar.png
                 const matchedUser = allowedUsers?.find(u => u.uid === log.card_uid);
                 
                 let fallbackName = 'Unknown User';
                 if (matchedUser?.nama) {
-                  fallbackName = matchedUser.nama; // Menggunakan kolom 'nama' dari allowed_users
+                  fallbackName = matchedUser.nama;
                 } else if ((log as any).nama) {
                   fallbackName = (log as any).nama;
                 } else if (log.name && log.name !== log.card_uid) {
@@ -91,9 +106,7 @@ export function ActivityTable({ logs, allowedUsers, deleteLog, updateLog }: Acti
 
                 const displayName = isEditing ? editName : fallbackName;
                 const displayInitial = displayName.trim().charAt(0).toUpperCase() || '?';
-
-                // 2. Logika Fallback Emoji Berdasarkan Kasus dsadasds.png
-                const config = EMOTION_CONFIG[log.emotion];
+                const config = getEmotionConfig(log.emotion);
 
                 return (
                   <tr key={`${log.id}-${log.timestamp}`} className="hover:bg-slate-50/80 transition-colors group">
@@ -139,16 +152,15 @@ export function ActivityTable({ logs, allowedUsers, deleteLog, updateLog }: Acti
                             ))}
                           </select>
                         ) : (
-                          /* Jika config cocok, tampilkan emoji asli. Jika zonk/kosong, tampilkan fallback Netral */
                           config ? (
                             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${config.bgColor} ${config.textColor}`}>
                               <span className="text-lg">{config.emoji}</span>
                               {config.label}
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm bg-slate-100 text-slate-400 border border-slate-200-]+">
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm bg-slate-100 text-slate-400 border border-slate-200">
                               <span className="text-lg">😐</span>
-                              Tidak Ada Data
+                              {log.emotion || 'Tidak Ada Data'}
                             </div>
                           )
                         )}
