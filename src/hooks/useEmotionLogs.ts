@@ -24,6 +24,20 @@ const normalizeTimestamp = (value: number | string): number => {
   return numeric < 1_000_000_000_000 ? numeric * 1000 : numeric;
 };
 
+// Normalisasi emotion dari format lama (senang/sedih/marah) ke format baru (Bersemangat/Sedih/Marah)
+const normalizeEmotion = (emotion: string): EmotionType => {
+  const map: Record<string, EmotionType> = {
+    senang: 'Bersemangat',
+    bersemangat: 'Bersemangat',
+    sedih: 'Sedih',
+    marah: 'Marah',
+    cemas: 'Cemas',
+    malas: 'Malas',
+    tenang: 'Tenang',
+  };
+  return map[emotion.trim().toLowerCase()] ?? (emotion as EmotionType);
+};
+
 export function useEmotionLogs() {
   const [logs, setLogs] = useState<EmotionLog[]>([]);
   const [isConnected, setIsConnected] = useState(false);
@@ -68,9 +82,8 @@ export function useEmotionLogs() {
             name: log.user_name?.trim() ? log.user_name : log.card_uid,
             card_uid: log.card_uid,
             owner_name: uidToName[log.card_uid],
-            emotion: log.emotion as EmotionType,
-            // 🔥 PERBAIKAN: Bungkus dengan new Date().toISOString() agar bertipe string sesuai isi EmotionLog
-            timestamp: new Date(normalizeTimestamp(log.timestamp)).toISOString(),
+            emotion: normalizeEmotion(log.emotion as string), // ← fix data lama & baru
+            timestamp: normalizeTimestamp(log.timestamp),
           })) ?? [];
 
         setLogs(mappedLogs);
@@ -101,7 +114,8 @@ export function useEmotionLogs() {
       client.on('connect', () => {
         setIsConnected(true);
 
-        client?.publish('v1/emotion/logs', '', { retain: true, qos: 1 });
+        // ✅ HAPUS publish empty string - ini penyebab emoji tidak muncul
+        // client?.publish('v1/emotion/logs', '', { retain: true, qos: 1 });
 
         client?.subscribe('v1/emotion/logs', (err) => {
           if (err) console.error(err);
