@@ -21,12 +21,12 @@ const getEmotionConfig = (emotionStr: string) => {
   if (!emotionStr) return null;
   const map: Record<string, EmotionType> = {
     senang: 'Bersemangat',
-    bersemangat: 'Bersemangat',
-    sedih: 'Sedih',
-    marah: 'Marah',
-    cemas: 'Cemas',
-    malas: 'Malas',
-    tenang: 'Tenang',
+    Bersemangat: 'Bersemangat',
+    Sedih: 'Sedih',
+    Marah: 'Marah',
+    Cemas: 'Cemas',
+    Malas: 'Malas',
+    Tenang: 'Tenang',
   };
   const normalized = map[emotionStr.trim().toLowerCase()] ?? (emotionStr as EmotionType);
   return EMOTION_CONFIG[normalized] ?? null;
