@@ -1,0 +1,9 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/emotion-logs/route": "app/api/emotion-logs/route.js",
+  "/api/emotion-logs/stats/route": "app/api/emotion-logs/stats/route.js",
+  "/api/mqtt/health/route": "app/api/mqtt/health/route.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/page": "app/page.js"
+}

@@ -1,0 +1,3 @@
+{
+  "/api/mqtt/health/route": "app/api/mqtt/health/route.js"
+}
