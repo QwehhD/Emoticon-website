@@ -39,6 +39,7 @@ export function ActivityTable({ logs, allowedUsers, deleteLog, updateLog }: Acti
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [filterUserUid, setFilterUserUid] = useState<string>('');
+  const [filterDate, setFilterDate] = useState<string>('');
 
   const startEdit = (log: EmotionLog) => {
     setEditingId(log.id);
@@ -68,14 +69,72 @@ export function ActivityTable({ logs, allowedUsers, deleteLog, updateLog }: Acti
     if (success && editingId === id) setEditingId(null);
   };
 
-  const filteredLogs = filterUserUid ? logs.filter(log => log.card_uid === filterUserUid) : logs;
+  const getLocalDateString = (timestamp: number | string) => {
+    const date = new Date(Number(timestamp));
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const filteredLogs = logs.filter(log => {
+    let matchUser = true;
+    let matchDate = true;
+    if (filterUserUid) {
+      matchUser = log.card_uid === filterUserUid;
+    }
+    if (filterDate) {
+      matchDate = getLocalDateString(log.timestamp) === filterDate;
+    }
+    return matchUser && matchDate;
+  });
+
+  const exportToCSV = () => {
+    const headers = ['Nama', 'Card UID', 'Emosi', 'Waktu'];
+    const rows = filteredLogs.map(log => {
+      const matchedUser = allowedUsers?.find(u => u.uid === log.card_uid);
+      let fallbackName = 'Unknown User';
+      if (matchedUser?.nama) fallbackName = matchedUser.nama;
+      else if ((log as any).nama) fallbackName = (log as any).nama;
+      else if (log.name && log.name !== log.card_uid) fallbackName = log.name;
+
+      const time = new Date(Number(log.timestamp)).toLocaleString('id-ID');
+      return `"${fallbackName}","${log.card_uid}","${log.emotion}","${time}"`;
+    });
+    
+    const csvContent = "\uFEFF" + [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    const fileName = filterDate ? `export_emosi_${filterDate}.csv` : 'export_emosi_semua.csv';
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center bg-white gap-4">
         <h2 className="font-bold text-lg">Log Aktivitas Terbaru</h2>
         
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={exportToCSV}
+            className="text-sm px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-sm transition-colors flex items-center gap-2"
+          >
+            <Save className="w-4 h-4" />
+            Export Excel (CSV)
+          </button>
+          
+          <input
+            type="date"
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+            className="text-sm px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+          />
+
           <select
             value={filterUserUid}
             onChange={(e) => setFilterUserUid(e.target.value)}
