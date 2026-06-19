@@ -101,11 +101,19 @@ export function useEmotionLogs() {
     };
 
     const connectMqtt = () => {
-      const brokerUrl =
-        "wss://5e5be1b7ba1b4958a3f9bb8ada1424eb.s1.eu.hivemq.cloud:8884/mqtt";
+      const brokerUrl = process.env.NEXT_PUBLIC_MQTT_BROKER_URL;
+      const username = process.env.NEXT_PUBLIC_MQTT_USERNAME;
+      const password = process.env.NEXT_PUBLIC_MQTT_PASSWORD;
+
+      if (!brokerUrl || !username || !password) {
+        console.warn("MQTT credentials are missing in environment variables.");
+        setError("Missing MQTT configuration.");
+        return;
+      }
+
       const options = {
-        username: "esp32_client",
-        password: "gZiyEM81b3CBaxk2",
+        username,
+        password,
         clientId:
           "nextjs_dashboard_" + Math.random().toString(16).substring(2, 8),
       };
