@@ -40,9 +40,14 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // MQTT Configuration
-const MQTT_BROKER = process.env.NEXT_PUBLIC_MQTT_BROKER_URL || 'mqtts://5e5be1b7ba1b4958a3f9bb8ada1424eb.s1.eu.hivemq.cloud:8883';
-const MQTT_USERNAME = process.env.NEXT_PUBLIC_MQTT_USERNAME || 'webbbb';
-const MQTT_PASSWORD = process.env.NEXT_PUBLIC_MQTT_PASSWORD || 'gZiyEM81b3CBaxk2';
+const MQTT_BROKER = process.env.NEXT_PUBLIC_MQTT_BROKER_URL;
+const MQTT_USERNAME = process.env.NEXT_PUBLIC_MQTT_USERNAME;
+const MQTT_PASSWORD = process.env.NEXT_PUBLIC_MQTT_PASSWORD;
+
+if (!MQTT_BROKER || !MQTT_USERNAME || !MQTT_PASSWORD) {
+  console.error('❌ Missing MQTT configuration');
+  process.exit(1);
+}
 
 // Cache for user validation
 const userCache = new Map<string, AllowedUser | null>();
