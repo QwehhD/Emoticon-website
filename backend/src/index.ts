@@ -40,9 +40,9 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // MQTT Configuration
-const MQTT_BROKER = process.env.NEXT_PUBLIC_MQTT_BROKER_URL;
-const MQTT_USERNAME = process.env.NEXT_PUBLIC_MQTT_USERNAME;
-const MQTT_PASSWORD = process.env.NEXT_PUBLIC_MQTT_PASSWORD;
+const MQTT_BROKER = process.env.NEXT_PUBLIC_MQTT_BROKER_URL as string;
+const MQTT_USERNAME = process.env.NEXT_PUBLIC_MQTT_USERNAME as string;
+const MQTT_PASSWORD = process.env.NEXT_PUBLIC_MQTT_PASSWORD as string;
 
 if (!MQTT_BROKER || !MQTT_USERNAME || !MQTT_PASSWORD) {
   console.error('❌ Missing MQTT configuration');
